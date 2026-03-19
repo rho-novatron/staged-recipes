@@ -1,0 +1,80 @@
+context:
+  version: "1.11.0"
+  build_base: 0
+  build: ${{ build_base if mpi != 'nompi' else build_base + 100 }}
+  # Build string encodes MPI variant so packages can depend on specific MPI builds
+  mpi_prefix: ${{ 'mpi_' + mpi if mpi != 'nompi' else 'nompi' }}
+
+package:
+  name: ginkgo
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ginkgo-project/ginkgo/archive/v${{ version }}.tar.gz
+  sha256: 8052c3d5994e1c996ebabe50a169deb565965da4f1c6c02e814ff0c7146c0378
+
+build:
+  number: ${{ build }}
+  string: ${{ mpi_prefix }}_h${{ hash }}_${{ build }}
+  # MPI variants only on Unix (conda-forge convention)
+  skip:
+    - win and mpi != 'nompi'
+  dynamic_linking:
+    missing_dso_allowlist:
+      - if: win
+        then: "*/nvcuda.dll"
+
+requirements:
+  build:
+    - cmake >=3.16
+    - ninja
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - if: cuda_compiler_version != "None"
+      then:
+        - ${{ compiler('cuda') }}
+  host:
+    - if: mpi != 'nompi'
+      then: ${{ mpi }}
+    - if: osx
+      then: llvm-openmp
+    - if: linux
+      then: libgomp
+  run:
+    - if: mpi != 'nompi'
+      then: ${{ mpi }}
+  run_exports:
+    - ${{ pin_subpackage('ginkgo', upper_bound='x.x') }}
+    - if: mpi != 'nompi'
+      then: ginkgo * ${{ mpi_prefix }}_*
+
+tests:
+  - script:
+      - if: unix
+        then:
+          - test -f ${PREFIX}/include/ginkgo/ginkgo.hpp
+          - test -e ${PREFIX}/lib/libginkgo${SHLIB_EXT}
+          - test -e ${PREFIX}/lib/libginkgo_reference${SHLIB_EXT}
+          - test -e ${PREFIX}/lib/libginkgo_omp${SHLIB_EXT}
+        else:
+          - if not exist %LIBRARY_PREFIX%\include\ginkgo\ginkgo.hpp (exit 1)
+          - if not exist %LIBRARY_PREFIX%\lib\ginkgo.lib (exit 1)
+
+about:
+  homepage: https://ginkgo-project.github.io/
+  summary: High-performance numerical linear algebra library for many-core systems
+  description: |
+    Ginkgo is a high-performance numerical linear algebra library for many-core
+    systems, with a focus on solution of sparse linear systems. It is implemented
+    using modern C++ (C++17), with GPU kernels implemented for NVIDIA, AMD and
+    Intel GPUs.
+  license: BSD-3-Clause
+  license_file: LICENSE
+  documentation: https://ginkgo-project.github.io/ginkgo-generated-documentation/doc/develop/
+  repository: https://github.com/ginkgo-project/ginkgo
+
+extra:
+  recipe-maintainers:
+    # TODO: replace with your GitHub username
+    - rho
