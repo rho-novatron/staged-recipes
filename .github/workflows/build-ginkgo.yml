@@ -1,0 +1,66 @@
+name: Build Ginkgo
+
+on:
+  push:
+    branches:
+      - ginkgo
+      - copilot/fix-non-cuda-build-errors
+    paths:
+      - recipes/ginkgo/**
+      - .ci_support/**
+      - .github/workflows/build-ginkgo.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - recipes/ginkgo/**
+      - .ci_support/**
+      - .github/workflows/build-ginkgo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.config }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: linux64
+            os: ubuntu-latest
+          - config: linux64_cuda131
+            os: [self-hosted, linux, x86_64, cuda]
+          - config: osx_arm64
+            os: macos-latest
+          - config: win64
+            os: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: rattler-env
+          create-args: >-
+            -c conda-forge
+            rattler-build
+
+      - name: Build recipe
+        shell: bash -el {0}
+        run: |
+          rattler-build build \
+            --recipe recipes/ginkgo \
+            --variant-config .ci_support/${{ matrix.config }}.yaml \
+            --output-dir output/
+
+      - name: Upload packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-packages-${{ matrix.config }}
+          path: output/
