@@ -31,7 +31,12 @@ fi
 
 # CUDA support
 if [[ "${cuda_compiler_version}" != "None" ]]; then
-    cmake_args+=(-DGINKGO_BUILD_CUDA=ON)
+    # Limit CUDA architectures to avoid relocation overflow from too many archs.
+    # 80=A100, 86=RTX30xx, 89=RTX40xx, 90=H100, 100=B100/B200, 120=RTX50xx
+    cmake_args+=(
+        -DGINKGO_BUILD_CUDA=ON
+        -DCMAKE_CUDA_ARCHITECTURES="80;86;89;90;100;120"
+    )
 else
     cmake_args+=(-DGINKGO_BUILD_CUDA=OFF)
 fi

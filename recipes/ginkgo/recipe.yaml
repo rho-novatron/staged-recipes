@@ -34,6 +34,8 @@ requirements:
     - if: cuda_compiler_version != "None"
       then:
         - ${{ compiler('cuda') }}
+        - cuda-cccl
+        - cuda-nvtx-dev
   host:
     - if: mpi != 'nompi'
       then: ${{ mpi }}
@@ -41,6 +43,15 @@ requirements:
       then: llvm-openmp
     - if: linux
       then: libgomp
+    - if: cuda_compiler_version != "None"
+      then:
+        - cuda-version ${{ cuda_compiler_version }}.*
+        - cuda-cudart-dev
+        - cuda-nvtx-dev
+        - libcublas-dev
+        - libcufft-dev
+        - libcurand-dev
+        - libcusparse-dev
   run:
     - if: mpi != 'nompi'
       then: ${{ mpi }}
@@ -76,5 +87,4 @@ about:
 
 extra:
   recipe-maintainers:
-    # TODO: replace with your GitHub username
-    - rho
+    - rho-novatron
