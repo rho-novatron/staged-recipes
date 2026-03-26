@@ -40,7 +40,8 @@ build:
           -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -mcmodel=large"
           -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS -mcmodel=large"
           -DCMAKE_CUDA_FLAGS="-Xcompiler -mcmodel=large"
-          -DGINKGO_CUDA_ARCHITECTURES="${{ '89;90' if cuda_arch == 'sm89_90' else '120' if cuda_arch == 'sm120' else '89;90;120' }}"
+          -DGINKGO_CUDA_ARCHITECTURES="89;90;120"
+          -DCMAKE_CUDA_ARCHITECTURES="89;90;120"
           -DGINKGO_BUILD_TESTS=OFF
           -DGINKGO_BUILD_BENCHMARKS=OFF
           -DGINKGO_BUILD_EXAMPLES=OFF
@@ -95,7 +96,7 @@ requirements:
   run_exports:
     - ${{ pin_subpackage('ginkgo', upper_bound='x.x') }}
     - if: mpi != 'nompi'
-      then: ginkgo * ${{ mpi_prefix }}_*
+      then: ginkgo * ${{ mpi_prefix }}${{ cuda_arch_infix }}_*
 
 tests:
   - script:
