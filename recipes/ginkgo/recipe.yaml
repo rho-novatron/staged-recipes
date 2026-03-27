@@ -1,10 +1,12 @@
 context:
   version: "1.11.0"
   build_base: 0
-  build: ${{ build_base if mpi != 'nompi' else build_base + 100 }}
-  # Build string encodes MPI variant so packages can depend on specific MPI builds
+  # CUDA builds get +200 so the solver prefers them on GPU-capable machines
+  cuda_offset: ${{ 200 if cuda_compiler_version != 'None' else 0 }}
+  build: ${{ build_base + cuda_offset if mpi != 'nompi' else build_base + cuda_offset + 100 }}
+  # Build string encodes MPI and CUDA variants
   mpi_prefix: ${{ 'mpi_' + mpi if mpi != 'nompi' else 'nompi' }}
-  cuda_arch_infix: ${{ '_' + cuda_arch if cuda_arch is defined else '' }}
+  cuda_infix: ${{ '_cuda' + cuda_compiler_version.replace('.', '') if cuda_compiler_version != 'None' else '' }}
 
 package:
   name: ginkgo
@@ -16,7 +18,7 @@ source:
 
 build:
   number: ${{ build }}
-  string: ${{ mpi_prefix }}${{ cuda_arch_infix }}_h${{ hash }}_${{ build }}
+  string: ${{ mpi_prefix }}${{ cuda_infix }}_h${{ hash }}_${{ build }}
   # MPI variants only on Unix (conda-forge convention)
   skip:
     - win and mpi != 'nompi'
@@ -24,44 +26,6 @@ build:
     missing_dso_allowlist:
       - if: win
         then: "*/nvcuda.dll"
-  script:
-    - mkdir build && cd build
-    - if: cuda_compiler_version != "None"
-      then:
-        - >-
-          cmake ..
-          -G Ninja
-          -DCMAKE_INSTALL_PREFIX=$PREFIX
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_C_COMPILER=$CC
-          -DCMAKE_CXX_COMPILER=$CXX
-          -DCMAKE_C_FLAGS="$CFLAGS"
-          -DCMAKE_CXX_FLAGS="$CXXFLAGS -mcmodel=large"
-          -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -mcmodel=large"
-          -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS -mcmodel=large"
-          -DCMAKE_CUDA_FLAGS="-Xcompiler -mcmodel=large"
-          -DGINKGO_CUDA_ARCHITECTURES="89;90;120"
-          -DCMAKE_CUDA_ARCHITECTURES="89;90;120"
-          -DGINKGO_BUILD_TESTS=OFF
-          -DGINKGO_BUILD_BENCHMARKS=OFF
-          -DGINKGO_BUILD_EXAMPLES=OFF
-      else:
-        - >-
-          cmake ..
-          -G Ninja
-          -DCMAKE_INSTALL_PREFIX=$PREFIX
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_C_COMPILER=$CC
-          -DCMAKE_CXX_COMPILER=$CXX
-          -DCMAKE_C_FLAGS="$CFLAGS"
-          -DCMAKE_CXX_FLAGS="$CXXFLAGS"
-          -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS"
-          -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS"
-          -DGINKGO_BUILD_TESTS=OFF
-          -DGINKGO_BUILD_BENCHMARKS=OFF
-          -DGINKGO_BUILD_EXAMPLES=OFF
-    - cmake --build . --parallel
-    - cmake --install .
 requirements:
   build:
     - cmake >=3.16
@@ -93,10 +57,12 @@ requirements:
   run:
     - if: mpi != 'nompi'
       then: ${{ mpi }}
+    - if: cuda_compiler_version != "None"
+      then: __cuda
   run_exports:
     - ${{ pin_subpackage('ginkgo', upper_bound='x.x') }}
     - if: mpi != 'nompi'
-      then: ginkgo * ${{ mpi_prefix }}${{ cuda_arch_infix }}_*
+      then: ginkgo * ${{ mpi_prefix }}${{ cuda_infix }}_*
 
 tests:
   - script:
