@@ -6,7 +6,7 @@ context:
   build: ${{ build_base + cuda_offset if mpi != 'nompi' else build_base + cuda_offset + 100 }}
   # Build string encodes MPI and CUDA variants
   mpi_prefix: ${{ 'mpi_' + mpi if mpi != 'nompi' else 'nompi' }}
-  cuda_infix: ${{ '_cuda' + cuda_compiler_version | replace('.', '') if cuda_compiler_version != 'None' else '' }}
+  cuda_infix: ${{ '_cuda' + (cuda_compiler_version | replace('.', '')) if cuda_compiler_version != 'None' else '' }}
 
 package:
   name: ginkgo
